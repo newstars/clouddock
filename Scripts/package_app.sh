@@ -14,6 +14,11 @@ ICON_NAME="CloudDock"
 ICON_PNG="$ROOT_DIR/Resources/CloudDockIcon.png"
 ICONSET="$BUILD_DIR/$ICON_NAME.iconset"
 ICON_FILE="$ICON_NAME.icns"
+VERSION="${VERSION:-0.1.0}"
+BUILD_NUMBER="${BUILD_NUMBER:-1}"
+[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "VERSION must be X.Y.Z" >&2; exit 1; }
+[[ "$BUILD_NUMBER" =~ ^[0-9]+$ ]] || { echo "BUILD_NUMBER must be numeric" >&2; exit 1; }
+BUILD_ARGS=(-c release --package-path "$ROOT_DIR")
 
 for required_tool in swift python3 sips iconutil codesign; do
     command -v "$required_tool" >/dev/null || {
@@ -22,14 +27,30 @@ for required_tool in swift python3 sips iconutil codesign; do
     }
 done
 
-if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
-    swift build -c release --package-path "$ROOT_DIR"
+if [[ "${UNIVERSAL:-0}" == "1" ]]; then
+    ARCH_BINARIES=()
+    for arch in arm64 x86_64; do
+        if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
+            swift build "${BUILD_ARGS[@]}" --arch "$arch"
+        fi
+        ARCH_BINARIES+=("$(swift build "${BUILD_ARGS[@]}" --arch "$arch" --show-bin-path)/$APP_NAME")
+    done
+    BIN_DIR="$BUILD_DIR/universal-release"
+    mkdir -p "$BIN_DIR"
+    lipo -create "${ARCH_BINARIES[@]}" -output "$BIN_DIR/$APP_NAME"
+else
+    if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
+        swift build "${BUILD_ARGS[@]}"
+    fi
+    BIN_DIR="$(swift build "${BUILD_ARGS[@]}" --show-bin-path)"
 fi
 
 rm -rf "$APP_DIR"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
-cp "$BUILD_DIR/release/$APP_NAME" "$MACOS_DIR/$APP_NAME"
+cp "$BIN_DIR/$APP_NAME" "$MACOS_DIR/$APP_NAME"
 cp "$ROOT_DIR/Resources/Datadog.png" "$RESOURCES_DIR/Datadog.png"
+cp "$ROOT_DIR/LICENSE" "$RESOURCES_DIR/LICENSE"
+cp "$ROOT_DIR/Resources/Datadog-LICENSE.md" "$RESOURCES_DIR/Datadog-LICENSE.md"
 
 if [[ ! -f "$ICON_PNG" ]]; then
     python3 "$ROOT_DIR/Scripts/generate_app_icon.py"
@@ -65,9 +86,9 @@ cat > "$CONTENTS_DIR/Info.plist" <<PLIST
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
+    <string>$VERSION</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>$BUILD_NUMBER</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>NSPrincipalClass</key>

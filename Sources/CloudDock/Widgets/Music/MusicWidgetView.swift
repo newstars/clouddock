@@ -9,14 +9,17 @@ struct MusicWidgetView: View {
 
     var body: some View {
         Button {
-            model.refresh()
             isPresented.toggle()
+            if isPresented { model.refresh(clearError: true) }
         } label: {
             SystemApplicationIcon(bundleIdentifier: "com.apple.Music", fallback: "music.note")
         }
         .buttonStyle(.plain)
         .help("Music")
         .accessibilityLabel("Apple Music")
+        .contextMenu {
+            Button("Open Apple Music") { model.openMusic() }
+        }
         .popover(isPresented: $isPresented, arrowEdge: .bottom) {
             popoverContent
         }
@@ -37,9 +40,19 @@ struct MusicWidgetView: View {
             HStack(spacing: 8) {
                 Text("Music")
                     .font(.headline)
+                Button {
+                    model.openMusic()
+                } label: {
+                    Image(systemName: "arrow.up.forward.app")
+                        .frame(width: 20, height: 20)
+                }
+                .buttonStyle(.borderless)
+                .help("Open Apple Music")
+                .accessibilityLabel("Open Apple Music")
+                .disabled(model.isLaunching)
                 Spacer()
                 Button {
-                    model.refresh()
+                    model.refresh(clearError: true)
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }
@@ -47,7 +60,27 @@ struct MusicWidgetView: View {
                 .help("Refresh music")
             }
 
-            VStack(alignment: .leading, spacing: 4) {
+            if model.isLaunching { ProgressView("Opening Music...") }
+
+            HStack(spacing: 10) {
+                Group {
+                    if let artwork = model.artwork {
+                        Image(nsImage: artwork)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        Image(systemName: "music.note")
+                            .font(.title2)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(.white.opacity(0.08))
+                    }
+                }
+                .frame(width: 60, height: 60)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .accessibilityLabel("Album artwork")
+
+                VStack(alignment: .leading, spacing: 4) {
                 Text(model.trackTitle)
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
@@ -57,6 +90,8 @@ struct MusicWidgetView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             HStack(spacing: 8) {
@@ -68,6 +103,7 @@ struct MusicWidgetView: View {
                 }
                 .buttonStyle(.borderless)
                 .help("Previous track")
+                .disabled(model.isLaunching || !model.isMusicRunning)
 
                 Button {
                     model.togglePlayPause()
@@ -77,6 +113,7 @@ struct MusicWidgetView: View {
                 }
                 .buttonStyle(.borderless)
                 .help(model.playPauseHelpText)
+                .disabled(model.isLaunching)
 
                 Button {
                     model.nextTrack()
@@ -86,6 +123,7 @@ struct MusicWidgetView: View {
                 }
                 .buttonStyle(.borderless)
                 .help("Next track")
+                .disabled(model.isLaunching || !model.isMusicRunning)
 
                 Spacer()
 
@@ -128,9 +166,43 @@ private final class MusicWidgetModel: ObservableObject {
     @Published private(set) var currentTime: Double = 0
     @Published private(set) var duration: Double = 0
     @Published private(set) var error: String?
+    @Published private(set) var isLaunching = false
+    @Published private(set) var artwork: NSImage?
+    private var artworkKey: [String] = []
 
-    func refresh() {
-        guard NSWorkspace.shared.runningApplications.contains(where: { $0.bundleIdentifier == "com.apple.Music" }) else {
+    var isMusicRunning: Bool {
+        NSWorkspace.shared.runningApplications.contains { $0.bundleIdentifier == "com.apple.Music" }
+    }
+
+    func openMusic(activates: Bool = true, completion: (@MainActor () -> Void)? = nil) {
+        guard !isLaunching else { return }
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Music") else {
+            error = "Apple Music is not installed."; return
+        }
+        error = nil
+        isLaunching = true
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = activates
+        configuration.hides = !activates
+        NSWorkspace.shared.openApplication(at: url, configuration: configuration) { @Sendable [weak self] _, error in
+            let failed = error != nil
+            Task { @MainActor in
+                self?.isLaunching = false
+                if failed {
+                    self?.error = "Apple Music could not be opened."
+                } else {
+                    completion?()
+                }
+            }
+        }
+    }
+
+    func refresh(clearError: Bool = false) {
+        if clearError { error = nil }
+        guard !isLaunching, error == nil else { return }
+        guard isMusicRunning else {
+            artwork = nil
+            artworkKey = []
             state = .stopped
             trackTitle = "Music"
             artist = ""
@@ -142,6 +214,8 @@ private final class MusicWidgetModel: ObservableObject {
         }
 
         guard let output = runAppleScript(Self.statusScript) else {
+            artwork = nil
+            artworkKey = []
             state = .stopped
             trackTitle = "Music"
             artist = ""
@@ -160,22 +234,56 @@ private final class MusicWidgetModel: ObservableObject {
         currentTime = Double(parts[safe: 5]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "") ?? 0
         error = nil
 
+        refreshArtwork()
+
         if trackTitle.isEmpty {
             trackTitle = state == .playing ? "Playing music" : "Music"
         }
     }
 
     func previousTrack() {
+        guard isMusicRunning, !isLaunching else { return }
+        error = nil
         guard runAppleScript(Self.previousScript) != nil else { return }
         refresh()
     }
 
+    private func refreshArtwork() {
+        guard state == .playing || state == .paused else {
+            artwork = nil
+            artworkKey = []
+            return
+        }
+        let key = [trackTitle, artist, album]
+        guard key != artworkKey else { return }
+        artworkKey = key
+        artwork = nil
+        // Artwork is optional; a missing image must not interrupt playback controls.
+        guard let script = NSAppleScript(source: Self.artworkScript) else { return }
+        var scriptError: NSDictionary?
+        let result = script.executeAndReturnError(&scriptError)
+        guard scriptError == nil, result.data.count <= 20_000_000 else { return }
+        artwork = NSImage(data: result.data)
+    }
+
     func togglePlayPause() {
-        guard runAppleScript(Self.playPauseScript) != nil else { return }
+        guard !isLaunching else { return }
+        guard isMusicRunning else {
+            openMusic(activates: false) { [weak self] in self?.togglePlayPause() }
+            return
+        }
+        error = nil
+        guard let result = runAppleScript(Self.playPauseScript) else { return }
+        if result == "no-track" {
+            error = "Choose a song or playlist in Apple Music first."
+            return
+        }
         refresh()
     }
 
     func nextTrack() {
+        guard isMusicRunning, !isLaunching else { return }
+        error = nil
         guard runAppleScript(Self.nextScript) != nil else { return }
         refresh()
     }
@@ -259,7 +367,8 @@ private final class MusicWidgetModel: ObservableObject {
             return nil
         }
 
-        return descriptor.stringValue
+        // Playback commands can succeed without returning a string.
+        return descriptor.stringValue ?? ""
     }
 
     private func formatTime(_ value: Double) -> String {
@@ -319,9 +428,37 @@ private final class MusicWidgetModel: ObservableObject {
     end tell
     """
 
+    private static let artworkScript = """
+    with timeout of 2 seconds
+        tell application "Music"
+            if exists current track then
+                if (count of artworks of current track) > 0 then
+                    return raw data of artwork 1 of current track
+                end if
+            end if
+        end tell
+    end timeout
+    """
+
     private static let playPauseScript = """
     tell application "Music"
-        playpause
+        if player state is playing then
+            pause
+        else if player state is paused then
+            play
+        else
+            if exists current track then
+                play
+            else
+                set selectedTracks to selection
+                if (count of selectedTracks) > 0 then
+                    play item 1 of selectedTracks
+                else
+                    return "no-track"
+                end if
+            end if
+        end if
+        return "ok"
     end tell
     """
 

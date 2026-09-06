@@ -25,7 +25,7 @@ struct DockReorderGesture: ViewModifier {
             .offset(dragging ? translation : .zero)
             .zIndex(dragging ? 100 : 0)
             .opacity(dragging ? 0.8 : 1)
-            .highPriorityGesture(
+            .simultaneousGesture(
                 DragGesture(minimumDistance: 6, coordinateSpace: .named(space))
                     .updating($dragging) { _, active, _ in active = true }
                     .onChanged { translation = $0.translation }

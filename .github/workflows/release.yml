@@ -1,0 +1,58 @@
+name: Draft DMG Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (X.Y.Z); creates a draft prerelease for review'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: draft-dmg-release
+  cancel-in-progress: false
+
+jobs:
+  package:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and validate universal DMG
+        env:
+          VERSION: ${{ inputs.version }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          UNIVERSAL: '1'
+        run: |
+          bash Scripts/package_dmg.sh
+          lipo -verify_arch arm64 x86_64 .build/dist/CloudDock.app/Contents/MacOS/CloudDock
+      - uses: actions/upload-artifact@v4
+        with:
+          name: clouddock-dmg
+          path: |
+            .build/dist/*.dmg
+            .build/dist/*.sha256
+          if-no-files-found: error
+  draft:
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: clouddock-dmg
+          path: dist
+      - name: Create draft prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ inputs.version }}
+          TARGET: ${{ github.sha }}
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+          gh release create "v$VERSION" dist/*.dmg dist/*.sha256 \
+            --target "$TARGET" --draft --prerelease --title "CloudDock $VERSION Preview" \
+            --notes "Development preview for macOS 14+. Universal: Apple Silicon and Intel. Ad-hoc signed, NOT Apple-notarized. Release audit and installation testing are still in progress. / macOS 14 이상 개발 프리뷰입니다. Apple Silicon과 Intel을 포함합니다. 개발용 임시 서명이며 Apple 공증되지 않았습니다. 공개 전 감사 및 설치 검증이 진행 중입니다."

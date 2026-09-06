@@ -1,17 +1,25 @@
 # Security Notes
 
-CloudDock currently stores only non-sensitive UI preferences in `UserDefaults`.
+CloudDock stores UI preferences, local paths, and quick notes in `UserDefaults`.
+These can contain personal information and are not an encrypted credential store.
+Datadog API and application keys are stored in Keychain by `DatadogKeychain`.
+Clipboard history is an in-memory, truncated text preview with heuristic masking,
+not a guarantee that every secret will be detected. Privacy mode is not global redaction.
+
+CloudDock은 UI 설정·로컬 경로·메모를 UserDefaults에 저장합니다. 개인정보가 포함될
+수 있으며 암호화된 자격 증명 저장소가 아닙니다. Datadog 키는 Keychain에 저장합니다.
+클립보드 마스킹은 모든 비밀정보를 탐지한다고 보장하지 않으며 개인정보 모드는 전역 숨김이 아닙니다.
 User-added application launchers store local app bundle paths only; no credentials are stored for launchers.
 
 Security boundaries for future cloud widgets:
 
 - Do not store API tokens, AWS credentials, Datadog keys, GitHub tokens, account IDs, or private URLs in `UserDefaults`.
-- Add a dedicated Keychain-backed credential store before implementing authenticated widgets.
+- Use Keychain-backed credential storage for authenticated widgets, as Datadog currently does.
 - Collapsed widgets that can expose organization, repository, service, incident, or account names must provide a redacted display mode.
 - Planned cloud widgets should stay disabled in the gallery until their credential storage, request scope, and redaction behavior are implemented.
 - Network clients should live in narrow service types, not SwiftUI views.
 - Avoid shelling out for cloud integrations unless there is no stable API alternative. Current Git status support uses a fixed `/usr/bin/git status` command with a configured repository path.
-- External command-backed local widgets use fixed executable paths and short hard timeouts so the dock does not hang during launch or refresh.
+- External command-backed local widgets use fixed executable paths and short timeouts. Some calls are still synchronous; timeout handling does not guarantee a responsive UI. This remains under audit.
 - Command timeout cleanup is limited to CloudDock's own child command processes.
 - CPU and memory expanded views can send `SIGTERM` to a process only after the user clicks that process row's terminate button. Do not add automatic process termination.
 - Before distribution, package as a signed `.app` with hardened runtime and explicit entitlements.

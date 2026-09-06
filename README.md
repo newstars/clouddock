@@ -2,9 +2,66 @@
 
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-Support_CloudDock-FFDD00?style=flat-square&logo=buymeacoffee&logoColor=000000)](https://buymeacoffee.com/newstars)
 
+macOS용 위젯 독. 앱 그룹, 음악 제어, 시스템 정보와 개발 도구를 한곳에 모읍니다.
+
 CloudDock is a customizable macOS dock with live widgets, app groups, and quick access to your apps and developer tools.
 
-Current MVP scope:
+> **개발 프리뷰 / Development Preview**: 코드·보안·성능 감사가 진행 중입니다. 안정 버전이나 저부하 보장을 의미하지 않습니다. Release-readiness, security, and performance auditing is ongoing; stability and low resource usage are not yet verified guarantees.
+
+## 다운로드 및 설치 / Download & Install
+
+일반 사용자는 빌드 없이 **[GitHub Releases](https://github.com/newstars/clouddock/releases)**의 공개 릴리스에서 `.dmg`를 내려받습니다. 공개된 DMG가 없으면 아직 배포 전입니다. 초안과 Actions 산출물은 공개 릴리스가 아닙니다.
+
+Download a `.dmg` from a published **[GitHub Release](https://github.com/newstars/clouddock/releases)** without building the source. If none is listed, distribution is not ready yet. Drafts and Actions artifacts are not public releases.
+
+1. macOS 14 이상에서 DMG를 엽니다. / Open the DMG on macOS 14 or later.
+2. `CloudDock.app`을 `Applications`로 드래그합니다. / Drag the app into `Applications`.
+3. Applications에서 실행하고 macOS Dock의 CloudDock 아이콘으로 표시·숨김을 전환합니다. / Launch from Applications; toggle visibility with the CloudDock icon in the macOS Dock.
+
+`universal`: Apple Silicon 및 Intel / Apple Silicon and Intel. `arm64`: Apple Silicon 전용 / only. `x86_64`: Intel용 / Intel. 실제 기기별 검증 범위는 릴리스 노트를 확인하세요. / See release notes for hardware actually tested.
+
+**현재 개발용 임시 서명(ad-hoc)이며 Apple 공증이 없습니다.** DMG 자체가 공증을 제공하지 않으며 macOS가 다운로드한 앱을 차단할 수 있습니다. Gatekeeper 전역 해제는 권하지 않습니다.
+
+**Current packaging is ad-hoc signed, not Apple-notarized.** DMG packaging does not provide notarization; macOS may block downloaded builds. We do not recommend globally disabling Gatekeeper.
+
+## 기능 현황 / Feature Status
+
+'구현됨'은 코드 존재를 뜻하며 모든 환경에서 검증 완료되었다는 뜻은 아닙니다. / “Implemented” does not mean verified on every device or account.
+
+| 기능 / Feature | 상태·제한 / Status & Limitations |
+| --- | --- |
+| 위젯 독 / Widget dock | 구현됨: 줄바꿈, 위치, 표시·숨김, 순서 변경. 다중 모니터·드래그 회귀 검증 진행 중. / Implemented; multi-monitor and drag regression testing ongoing. |
+| 앱·그룹 / Apps & groups | 앱 추가, 2×2 그룹 미리보기, 실행 구현됨. / Custom apps, group previews, and launching implemented. |
+| 파일·폴더 / Files & folders | 로컬 경로 즐겨찾기 구현됨. 이동·삭제·권한 제한 시 열기 실패 가능. / Local-path favorites implemented; moved/deleted/inaccessible items may fail to open. |
+| 실행 중 앱 / Running apps | 일반 앱 목록·전환 구현됨. / Regular-app listing and switching implemented. |
+| 시계·세계시계·날짜 / Clocks & date | 현재 시각 및 여러 시간대 구현됨. / Local time and multiple time zones implemented. |
+| 포모도로 / Pomodoro | 기본 타이머 구현됨. / Basic focus timer implemented. |
+| CPU·메모리 / CPU & memory | 사용량·프로세스 목록·확인 후 SIGTERM 요청 구현됨. 종료는 대상에 따라 실패 가능. 메모리 사용량은 메모리 압력과 다름. / Usage, process lists, and confirmed SIGTERM requests implemented; termination may fail. Usage is not memory pressure. |
+| 네트워크·디스크·배터리 / Network, disk & battery | 로컬 통계 구현됨. 정확도·장시간 갱신 검증 진행 중. / Local statistics implemented; accuracy and long-running refresh checks ongoing. |
+| 클립보드 / Clipboard | 160자 미리보기 10개를 메모리에 보관. 원문 전체 복원 아님; 민감정보 탐지는 불완전. / Ten in-memory text previews capped at 160 characters, not full-text restoration; sensitive-text detection is heuristic. |
+| 메모 / Notes | 로컬 간단 메모. Apple Notes 동기화 아님. / Local quick note, not Apple Notes sync. |
+| 캘린더 / Calendar | EventKit 일정 조회 구현됨. macOS 권한 필요. / EventKit viewing implemented; permission required. |
+| 음량·출력 / Audio | CoreAudio 제어 구현됨. 일부 외부 장치는 소프트웨어 음량 미지원. / CoreAudio controls implemented; some devices do not support software volume. |
+| 날씨 / Weather | Open-Meteo 현재 날씨·도시 검색·여러 도시 저장. 인터넷 필요; Apple Weather 데이터 아님. / Open-Meteo current conditions/search/saved cities; internet required, not Apple Weather data. |
+| Apple Music | 재생 제어·자켓 구현 및 로컬 재생 UI 확인. 자동화 권한과 재생할 곡 필요. / Playback controls/artwork implemented with local playback UI checked; Automation permission and playable content required. |
+| Git | 여러 로컬 저장소 상태 구현됨. 자동 fetch 없음. / Multiple local repositories implemented; no auto-fetch, tracking reflects the last fetch. |
+| Datadog | API·Application Key 모니터 조회 코드 구현, Keychain 저장. 실제 계정 검증 미완료, OAuth 미구현. / Keychain-backed monitor reader implemented; live-account validation incomplete, no OAuth. |
+| 로그인 시 실행 / Launch at login | 등록 구현됨. 설치 경로·macOS 승인에 따라 동작. / Registration implemented; depends on installation path and macOS approval. |
+
+### 미구현 / Not Implemented
+
+GitHub PR·알림, Kubernetes, AWS, 매출 위젯은 계획 항목이며 사용 가능한 기능이 아닙니다. Claude Code·ChatGPT 사용량, Datadog OAuth, 자동 업데이트도 미구현입니다.
+
+GitHub PRs/notifications, Kubernetes, AWS, and revenue widgets are planned, not available. Claude Code/ChatGPT usage, Datadog OAuth, and automatic updates are also not implemented.
+
+### 성능·개인정보 / Performance & Privacy
+
+현재 공유 갱신 루프는 독이 숨겨져도 일부 통계·명령을 조회합니다. 장시간 CPU·메모리 및 누수 검증은 아직 완료되지 않았습니다. UI 설정·로컬 경로·메모는 로컬 저장, Datadog 키는 Keychain 저장입니다. 개인정보 모드는 모든 위젯 정보를 숨기는 보안 경계가 아닙니다.
+
+The shared refresh loop currently polls some statistics/commands even when hidden. Long-running CPU/memory and leak validation is incomplete. Preferences, paths, and notes are local; Datadog keys use Keychain. Privacy mode does not hide all data in every widget.
+
+<details>
+<summary>개발자용 기존 구현 목록 / Detailed Implementation Inventory</summary>
 
 - Borderless floating macOS window
 - Transparent, material-backed compact dock UI with automatic multi-row wrapping
@@ -35,13 +92,17 @@ Current MVP scope:
 - Dock position, transparency, always-on-top, and launch-at-login settings
 - Minimal widget registry and UI preferences persistence foundation
 
-## Build
+</details>
+
+## 개발자용 빌드 / Developer Build
+
+일반 설치에는 필요 없습니다. macOS 및 Swift 6.1 이상이 필요합니다. / Not needed for end-user installation. Requires macOS and Swift 6.1+.
 
 ```sh
 swift build
 ```
 
-## Run
+## 개발자용 실행 / Developer Run
 
 ```sh
 Scripts/package_app.sh
@@ -52,13 +113,19 @@ The app runs as a regular macOS app with a Dock icon and a menu bar item named `
 
 `swift run CloudDock` is useful for compile-time development, but the packaged `.app` path is the reliable way to exercise macOS app lifecycle behavior.
 
-## Package Development App
+## 개발용 패키징 / Development Packaging
 
 ```sh
 Scripts/package_app.sh
 ```
 
-The script creates an ad-hoc signed app bundle at `.build/dist/CloudDock.app`.
+개발용 임시 서명 앱을 생성합니다. / Creates an ad-hoc signed app at `.build/dist/CloudDock.app`.
+
+```sh
+VERSION=0.1.0 UNIVERSAL=1 bash Scripts/package_dmg.sh
+```
+
+DMG 및 SHA-256 파일은 `.build/dist/`에 생성됩니다. 유지관리자는 Actions의 **Draft DMG Release**에서 새 `X.Y.Z` 버전을 입력하면 universal DMG 초안 프리릴리스를 만들 수 있습니다. 검토 전 자동 공개하지 않습니다. / DMG and SHA-256 files appear in `.build/dist/`. Maintainers can run **Draft DMG Release** with a new `X.Y.Z` version to create a draft universal prerelease, not automatically publish it. [배포 절차 / Release Guide](docs/RELEASING.md).
 
 ## CI
 
@@ -68,10 +135,12 @@ Scripts/ci.sh
 
 CI builds debug and release, packages `.build/dist/CloudDock.app`, validates `Info.plist`, and verifies the app signature.
 
-## Security Boundary
+## 보안 / Security Boundary
 
-`DockPreferencesStore` is only for non-sensitive UI preferences. Future credential-backed widgets must use Keychain-backed storage; see `SECURITY.md`.
+설정 저장소는 자격 증명 저장용이 아닙니다. Datadog 키는 Keychain에 저장합니다. / Preferences are not a credential store; Datadog keys use Keychain. See [SECURITY.md](SECURITY.md).
 
-## Support
+## 후원 / Support
+
+후원은 선택이며 기능 제한 해제와 무관합니다. [Buy Me a Coffee](https://buymeacoffee.com/newstars)로 개발을 후원할 수 있습니다.
 
 CloudDock is free to use. If it makes your day easier, you can support its development on [Buy Me a Coffee](https://buymeacoffee.com/newstars). Support is optional and does not unlock or restrict features.
