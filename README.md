@@ -1,10 +1,39 @@
-# CloudDock
+<p align="center">
+  <img src="Resources/CloudDockIcon.png" width="96" height="96" alt="CloudDock app icon">
+</p>
 
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-Support_CloudDock-FFDD00?style=flat-square&logo=buymeacoffee&logoColor=000000)](https://buymeacoffee.com/newstars)
+<h1 align="center">CloudDock</h1>
 
-macOS용 위젯 독. 앱 그룹, 음악 제어, 시스템 정보와 개발 도구를 한곳에 모읍니다.
+<p align="center">
+  <strong>앱, 음악, 시스템 정보. 나만의 macOS 위젯 독.</strong><br>
+  Your apps, music, and system stats. One personal macOS widget dock.
+</p>
 
-CloudDock is a customizable macOS dock with live widgets, app groups, and quick access to your apps and developer tools.
+<p align="center">
+  <a href="https://github.com/newstars/clouddock/releases">DMG 다운로드 / Downloads</a> ·
+  <a href="#기능-현황--feature-status">기능 / Features</a> ·
+  <a href="https://github.com/newstars/clouddock/issues">피드백 / Feedback</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/macOS-14%2B-222222?logo=apple&amp;logoColor=white" alt="macOS 14 or later">
+  <img src="https://img.shields.io/badge/status-preview-14866D" alt="Development preview">
+  <a href="https://buymeacoffee.com/newstars"><img src="https://img.shields.io/badge/Buy_Me_a_Coffee-Support_CloudDock-FFDD00?style=flat-square&amp;logo=buymeacoffee&amp;logoColor=000000" alt="Support CloudDock on Buy Me a Coffee"></a>
+</p>
+
+![실제 CloudDock 화면: 앱 그룹, 시계, CPU·메모리, 음악 및 빠른 접근 아이콘 / Actual CloudDock with app groups, clock, CPU and memory, music, and quick-access icons](docs/images/clouddock-bar.png)
+
+<p align="center"><sub>실제 실행 화면입니다. 표시 위젯과 순서는 직접 구성할 수 있습니다.<br>Captured from the running app. Choose your widgets and arrange them your way.</sub></p>
+
+## 내 Mac에 맞게 / Make It Yours
+
+| 자주 쓰는 앱을 가까이 / Apps Within Reach | 음악은 흐름을 끊지 않게 / Music Without Switching | 필요한 정보만 한눈에 / Useful Stats at a Glance |
+| --- | --- | --- |
+| 앱을 그룹으로 묶고 아이콘을 원하는 순서로 배치하세요. / Group your apps and arrange icons in your own order. | 독의 작은 팝업에서 Apple Music 재생을 제어하세요. / Control Apple Music from a compact dock popover. | CPU·메모리와 로컬 Git 상태를 필요한 위젯으로 구성하세요. / Pick widgets for CPU, memory, and local Git status. |
+
+쓰고 싶을 때 열고, 집중할 때 숨기세요. macOS Dock의 CloudDock 아이콘으로 전환할 수 있습니다.
+
+Bring it up when you need it. Hide it when you want to focus. Toggle CloudDock from its macOS Dock icon.
 
 > **개발 프리뷰 / Development Preview**: 코드·보안·성능 감사가 진행 중입니다. 안정 버전이나 저부하 보장을 의미하지 않습니다. Release-readiness, security, and performance auditing is ongoing; stability and low resource usage are not yet verified guarantees.
 
