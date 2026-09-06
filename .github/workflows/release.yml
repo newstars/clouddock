@@ -27,7 +27,7 @@ jobs:
           UNIVERSAL: '1'
         run: |
           bash Scripts/package_dmg.sh
-          lipo -verify_arch arm64 x86_64 .build/dist/CloudDock.app/Contents/MacOS/CloudDock
+          lipo .build/dist/CloudDock.app/Contents/MacOS/CloudDock -verify_arch arm64 x86_64
       - uses: actions/upload-artifact@v4
         with:
           name: clouddock-dmg
