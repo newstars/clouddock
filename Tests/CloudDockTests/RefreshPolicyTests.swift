@@ -46,5 +46,7 @@ struct RefreshPolicyTests {
         precondition(countdown.remainingSeconds == 60)
         print("PASS: countdown pause/resume, delayed ticks, elapsed deadline, reset")
         await BackgroundRefreshTests.run()
+        await MusicScriptTests.run()
+        await MusicModelTests.run()
     }
 }

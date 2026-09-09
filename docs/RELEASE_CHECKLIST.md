@@ -21,8 +21,8 @@ Each ID is closed only with the evidence in its row. Automated tests do not clos
 | ID | 상태 / Status | 작업 / Task | 완료 조건 / Required Evidence |
 | --- | --- | --- | --- |
 | A1 | 완료 / Done | Battery/network polling off MainActor | `BackgroundRefreshTests`: delayed loaders do not block MainActor, single-flight, failure/retry. Full CI passes. |
-| A2 | 다음 / Next | Music script execution off MainActor | Slow script cannot freeze dock; serialization and error-state tests; normal playback smoke test. |
-| A3 | 대기 / Open | Music denied permission, empty queue, missing artwork, app restart | Reproducible fixture tests plus runtime checks; no unsolicited app activation. |
+| A2 | 완료 / Done | Music script execution off MainActor | `MusicScriptTests` and `MusicModelTests` pass; background serial queue, single-flight model; local popup playback/artwork/pause smoke test on 2026-09-10. |
+| A3 | 다음 / Next | Music denied permission, empty queue, missing artwork, app restart | Error/empty-queue/artwork fixtures pass as part of A2; actual permission denial and app-restart checks remain. No unsolicited app activation. |
 | A4 | 대기 / Open | Disabled/hidden widget work | Instrument all command/network entry points; prove disabled widgets make no new requests. In-flight work reported separately. |
 | A5 | 대기 / Open | Idle and visible resource use | Record build, enabled widgets, hardware, sampling method and at least 30 minutes of CPU/RSS; inspect growth, do not infer no leaks from one sample. |
 | A6 | 대기 / Open | Sleep/wake | Real sleep/wake test: timer, polling, and UI recover without burst or stall. |
@@ -43,6 +43,10 @@ Each ID is closed only with the evidence in its row. Automated tests do not clos
 | D4 | 대기 / Open | Public release | README matches actual verification; bilingual known issues; final checksum/DMG published after remaining release blockers resolved. |
 
 ## Latest Result / 최근 결과
+
+2026-09-10, A2: Split the music view, model, and serial script executor. All status/control/artwork scripts execute off MainActor; the model allows one operation at a time and skips polling/duplicate clicks while busy. Tests cover script errors, concurrent submissions, a deliberately suspended model response, permission-error retry, missing artwork, and empty queue. Full CI passes. In the running packaged app, selected-track playback, track/artwork display, progress, and pause were observed without switching to the Music window. Test playback was left paused. Actual denial/revocation and restart behavior remain in A3.
+
+2026-09-10, A2: 음악 뷰·모델·직렬 실행기를 분리하고 상태·재생·자켓 스크립트를 백그라운드로 이동했습니다. 처리 중 중복 클릭과 타이머 요청을 건너뜁니다. 지연·오류·권한 오류 재시도·자켓 누락·빈 대기열 테스트 및 전체 CI가 통과했습니다. 패키징된 앱의 팝업에서 재생·곡 정보·자켓·진행 시간·일시정지를 확인했고 Music 창 전환은 없었습니다. 테스트 재생은 일시정지했습니다. 실제 권한 거부/철회와 앱 재시작 검증은 A3에 남깁니다.
 
 2026-09-09, A1: Battery and network services now publish state on MainActor but run their fixed commands in utility tasks. One refresh per service is allowed at a time. A failed network sample clears its prior baseline instead of calculating against stale data. Controlled delayed-output tests cover responsiveness, duplicate requests, and retries. No live battery-device or long-duration claim is made by this result.
 

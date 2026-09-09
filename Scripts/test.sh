@@ -10,6 +10,10 @@ swiftc Sources/CloudDock/Widgets/DockWidget.swift \
     Sources/CloudDock/Services/NetworkStatsService.swift \
     Sources/CloudDock/Services/ClipboardService.swift \
     Sources/CloudDock/Widgets/Pomodoro/CountdownTimer.swift \
+    Sources/CloudDock/Widgets/Music/MusicScriptExecutor.swift \
+    Sources/CloudDock/Widgets/Music/MusicWidgetModel.swift \
+    Tests/CloudDockTests/MusicScriptTests.swift \
+    Tests/CloudDockTests/MusicModelTests.swift \
     Tests/CloudDockTests/ClipboardTests.swift \
     Tests/CloudDockTests/CommandRunnerTests.swift \
     Tests/CloudDockTests/BackgroundRefreshTests.swift \
