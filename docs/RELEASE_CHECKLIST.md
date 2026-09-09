@@ -22,7 +22,7 @@ Each ID is closed only with the evidence in its row. Automated tests do not clos
 | --- | --- | --- | --- |
 | A1 | 완료 / Done | Battery/network polling off MainActor | `BackgroundRefreshTests`: delayed loaders do not block MainActor, single-flight, failure/retry. Full CI passes. |
 | A2 | 완료 / Done | Music script execution off MainActor | `MusicScriptTests` and `MusicModelTests` pass; background serial queue, single-flight model; local popup playback/artwork/pause smoke test on 2026-09-10. |
-| A3 | 다음 / Next | Music denied permission, empty queue, missing artwork, app restart | Error/empty-queue/artwork fixtures pass as part of A2; actual permission denial and app-restart checks remain. No unsolicited app activation. |
+| A3 | 진행 / In progress | Music denied permission, empty queue, missing artwork, app restart | Fixtures and actual quit/background restart pass (2026-09-10); actual Automation denial/restoration awaits user approval to temporarily change the permission. Not complete. |
 | A4 | 대기 / Open | Disabled/hidden widget work | Instrument all command/network entry points; prove disabled widgets make no new requests. In-flight work reported separately. |
 | A5 | 대기 / Open | Idle and visible resource use | Record build, enabled widgets, hardware, sampling method and at least 30 minutes of CPU/RSS; inspect growth, do not infer no leaks from one sample. |
 | A6 | 대기 / Open | Sleep/wake | Real sleep/wake test: timer, polling, and UI recover without burst or stall. |
@@ -43,6 +43,10 @@ Each ID is closed only with the evidence in its row. Automated tests do not clos
 | D4 | 대기 / Open | Public release | README matches actual verification; bilingual known issues; final checksum/DMG published after remaining release blockers resolved. |
 
 ## Latest Result / 최근 결과
+
+2026-09-10, A3 partial: Lifecycle notifications invalidate in-flight state/artwork replies and clear obsolete display data. Each script checks that Music is running before sending commands. Fixture tests cover quit/restart during status and artwork, stopped polling, and the script stopped sentinel; CI passes. Runtime: quit paused Music, open CloudDock Music popover (Stopped, previous/next disabled), verify no Music process after polling, click Play to launch in background, observe track/artwork/Playing, then Pause. Actual Automation denial/restoration is NOT tested yet; permission-change approval requested and no setting changed. Empty queue and missing artwork remain fixture-tested, not newly reproduced on a live account in this pass.
+
+2026-09-10, A3 부분 완료: 실행 상태 변경 시 오래된 응답·자켓을 무효화하고 스크립트에도 실행 여부 확인을 추가했습니다. 종료·재시작 회귀 테스트와 전체 CI 통과. 실기기에서 Music 종료 후 팝업만 열었을 때 Music 미실행, 재생 클릭 시 백그라운드 실행 및 곡·자켓 복구, 일시정지를 확인했습니다. 실제 자동화 권한 거부·복구는 승인 대기이며 설정을 변경하지 않았습니다. 빈 대기열·자켓 누락은 이번 실기기 재현이 아닌 테스트 데이터 기반 검증입니다.
 
 2026-09-10, A2: Split the music view, model, and serial script executor. All status/control/artwork scripts execute off MainActor; the model allows one operation at a time and skips polling/duplicate clicks while busy. Tests cover script errors, concurrent submissions, a deliberately suspended model response, permission-error retry, missing artwork, and empty queue. Full CI passes. In the running packaged app, selected-track playback, track/artwork display, progress, and pause were observed without switching to the Music window. Test playback was left paused. Actual denial/revocation and restart behavior remain in A3.
 

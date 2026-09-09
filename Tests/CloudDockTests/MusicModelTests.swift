@@ -49,7 +49,42 @@ enum MusicModelTests {
         await gate.finish(text: "no-track")
         await eventually { !model.isBusy }
         precondition(model.error?.contains("Choose a song") == true)
+        await verifyLifecycle()
         print("PASS: music single-flight, MainActor responsiveness, denied access/retry, optional artwork, empty queue")
+    }
+
+    @MainActor
+    private static func verifyLifecycle() async {
+        let gate = ScriptGate()
+        var running = true
+        let model = MusicWidgetModel(execute: { await gate.execute($0) }, running: { running }, usageDescription: "test")
+        model.refresh()
+        await eventually { await gate.calls == 1 }
+        running = false
+        model.musicLifecycleChanged()
+        await gate.finish(text: "playing|||Old song|||Artist|||Album|||100|||25")
+        await eventually { !model.isBusy }
+        precondition(model.trackTitle == "Music" && model.state == .stopped)
+        model.refresh()
+        await eventually { !model.isBusy }
+        let callsWhileStopped = await gate.calls
+        precondition(callsWhileStopped == 1, "Stopped Music must not receive status scripts")
+        running = true
+        model.musicLifecycleChanged()
+        model.refresh()
+        await eventually { await gate.calls == 2 }
+        await gate.finish(text: "playing|||New song|||Artist|||Album|||100|||25")
+        await eventually { await gate.calls == 3 }
+        model.musicLifecycleChanged()
+        await gate.finish()
+        await eventually { !model.isBusy }
+        precondition(model.trackTitle == "Music" && model.artwork == nil)
+        model.refresh()
+        await eventually { await gate.calls == 4 }
+        await gate.finish(text: "clouddock:not-running")
+        await eventually { !model.isBusy }
+        precondition(model.state == .stopped && model.error == nil)
+        print("PASS: music quit/restart stale status and artwork, stopped polling, script lifecycle guard")
     }
 
     @MainActor

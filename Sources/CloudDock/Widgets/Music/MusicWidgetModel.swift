@@ -17,6 +17,7 @@ final class MusicWidgetModel: ObservableObject {
     private let execute: @Sendable (String) async -> MusicScriptResult
     private let running: @MainActor () -> Bool
     private let usageDescription: String?
+    private var lifecycleRevision = 0
 
     init(execute: @escaping @Sendable (String) async -> MusicScriptResult = { await MusicScriptExecutor.execute($0) },
          running: @escaping @MainActor () -> Bool = {
@@ -29,6 +30,23 @@ final class MusicWidgetModel: ObservableObject {
 
     var isMusicRunning: Bool {
         running()
+    }
+
+    func musicLifecycleChanged() {
+        lifecycleRevision &+= 1
+        resetPlayback()
+        error = nil
+    }
+
+    private func resetPlayback() {
+        artwork = nil
+        artworkKey = []
+        state = .stopped
+        trackTitle = "Music"
+        artist = ""
+        album = ""
+        currentTime = 0
+        duration = 0
     }
 
     func openMusic(activates: Bool = true, completion: (@MainActor () -> Void)? = nil) {
@@ -67,27 +85,13 @@ final class MusicWidgetModel: ObservableObject {
 
     private func refreshState() async {
         guard isMusicRunning else {
-            artwork = nil
-            artworkKey = []
-            state = .stopped
-            trackTitle = "Music"
-            artist = ""
-            album = ""
-            currentTime = 0
-            duration = 0
+            resetPlayback()
             error = nil
             return
         }
 
         guard let output = await runAppleScript(Self.statusScript) else {
-            artwork = nil
-            artworkKey = []
-            state = .stopped
-            trackTitle = "Music"
-            artist = ""
-            album = ""
-            currentTime = 0
-            duration = 0
+            resetPlayback()
             return
         }
 
@@ -123,7 +127,11 @@ final class MusicWidgetModel: ObservableObject {
         artworkKey = key
         artwork = nil
         // Artwork is optional; a missing image must not interrupt playback controls.
-        let result = await execute(Self.artworkScript)
+        let revision = lifecycleRevision
+        guard isMusicRunning else { resetPlayback(); return }
+        let result = await execute(Self.guardedScript(Self.artworkScript))
+        guard revision == lifecycleRevision, isMusicRunning else { resetPlayback(); return }
+        guard result.text != Self.notRunning else { resetPlayback(); return }
         guard result.errorNumber == nil, result.data.count <= 20_000_000 else { return }
         artwork = NSImage(data: result.data)
     }
@@ -217,13 +225,17 @@ final class MusicWidgetModel: ObservableObject {
     }
 
     private func runAppleScript(_ source: String) async -> String? {
+        guard isMusicRunning else { resetPlayback(); return nil }
         guard let usageDescription,
               !usageDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             error = "Music control requires NSAppleEventsUsageDescription in the app's Info.plist."
             return nil
         }
 
-        let result = await execute("with timeout of 3 seconds\n\(source)\nend timeout")
+        let revision = lifecycleRevision
+        let result = await execute(Self.guardedScript(source))
+        guard revision == lifecycleRevision, isMusicRunning else { return nil }
+        guard result.text != Self.notRunning else { resetPlayback(); return nil }
         if result.errorNumber != nil {
             error = Self.message(for: result)
             return nil
@@ -231,6 +243,17 @@ final class MusicWidgetModel: ObservableObject {
 
         // Playback commands can succeed without returning a string.
         return result.text
+    }
+
+    private static let notRunning = "clouddock:not-running"
+
+    private static func guardedScript(_ source: String) -> String {
+        """
+        if application id "com.apple.Music" is not running then return "\(notRunning)"
+        with timeout of 3 seconds
+        \(source)
+        end timeout
+        """
     }
 
     private func formatTime(_ value: Double) -> String {

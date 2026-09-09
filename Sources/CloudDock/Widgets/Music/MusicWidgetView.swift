@@ -33,6 +33,19 @@ struct MusicWidgetView: View {
                 model.refresh()
             }
         }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didTerminateApplicationNotification)) { notification in
+            handleMusicLifecycle(notification)
+        }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didLaunchApplicationNotification)) { notification in
+            handleMusicLifecycle(notification)
+        }
+    }
+
+    private func handleMusicLifecycle(_ notification: Notification) {
+        guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+              app.bundleIdentifier == "com.apple.Music" else { return }
+        model.musicLifecycleChanged()
+        if isPresented { model.refresh() }
     }
 
     private var popoverContent: some View {
