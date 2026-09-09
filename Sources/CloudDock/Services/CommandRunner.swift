@@ -7,85 +7,77 @@ struct CommandResult {
 }
 
 enum CommandRunner {
-    static func run(_ executablePath: String, arguments: [String], timeout: TimeInterval = 1.5) -> CommandResult? {
+    static func run(_ executablePath: String, arguments: [String],
+                    timeout: TimeInterval = 1.5, maximumOutputBytes: Int = 4 * 1024 * 1024) -> CommandResult? {
+        guard timeout.isFinite, timeout > 0, maximumOutputBytes > 0 else { return nil }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executablePath)
         process.arguments = arguments
+        process.standardInput = FileHandle.nullDevice
+        let output = Pipe()
+        let errors = Pipe()
+        process.standardOutput = output
+        process.standardError = errors
+        let completion = DispatchSemaphore(value: 0)
+        process.terminationHandler = { _ in completion.signal() }
 
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-        process.standardOutput = outputPipe
-        process.standardError = errorPipe
-
-        let semaphore = DispatchSemaphore(value: 0)
-        let outputBuffer = LockedDataBuffer()
-
-        outputPipe.fileHandleForReading.readabilityHandler = { handle in
-            let data = handle.availableData
-            guard !data.isEmpty else {
-                return
+        let handles = [output.fileHandleForReading, errors.fileHandleForReading]
+        for handle in handles {
+            let fd = handle.fileDescriptor
+            let flags = fcntl(fd, F_GETFL)
+            guard flags >= 0, fcntl(fd, F_SETFL, flags | O_NONBLOCK) >= 0 else { return nil }
+        }
+        defer { handles.forEach { try? $0.close() } }
+        do { try process.run() } catch { return nil }
+        // Close parent writers so EOF is observable after the child closes its copies.
+        try? output.fileHandleForWriting.close()
+        try? errors.fileHandleForWriting.close()
+        defer {
+            if process.isRunning {
+                process.terminate()
+                if completion.wait(timeout: .now() + 0.25) == .timedOut, process.isRunning {
+                    kill(process.processIdentifier, SIGKILL)
+                    _ = completion.wait(timeout: .now() + 0.25)
+                }
             }
-            outputBuffer.append(data)
-        }
-        errorPipe.fileHandleForReading.readabilityHandler = { handle in
-            // Drain stderr while the child runs so a noisy command cannot block on a full pipe.
-            _ = handle.availableData
-        }
-        process.terminationHandler = { _ in
-            semaphore.signal()
         }
 
-        do {
-            try process.run()
-        } catch {
-            outputPipe.fileHandleForReading.readabilityHandler = nil
-            errorPipe.fileHandleForReading.readabilityHandler = nil
-            return nil
-        }
-
-        if semaphore.wait(timeout: .now() + timeout) == .timedOut {
-            process.terminate()
-            if semaphore.wait(timeout: .now() + 0.25) == .timedOut {
-                kill(process.processIdentifier, SIGKILL)
-                _ = semaphore.wait(timeout: .now() + 0.25)
+        let deadline = ProcessInfo.processInfo.systemUptime + timeout
+        var data = Data()
+        var closed = [false, false]
+        var buffer = [UInt8](repeating: 0, count: 16_384)
+        while true {
+            guard ProcessInfo.processInfo.systemUptime < deadline else { return nil }
+            for index in handles.indices where !closed[index] {
+                // Bound each drain pass so continuous output cannot starve the deadline check.
+                for _ in 0..<16 {
+                    let count = buffer.withUnsafeMutableBytes { bytes in
+                        read(handles[index].fileDescriptor, bytes.baseAddress, bytes.count)
+                    }
+                    if count > 0 {
+                        if index == 0 {
+                            guard count <= maximumOutputBytes - data.count else { return nil }
+                            data.append(contentsOf: buffer.prefix(count))
+                        }
+                    } else if count == 0 {
+                        closed[index] = true
+                        break
+                    } else if errno == EAGAIN || errno == EWOULDBLOCK {
+                        break
+                    } else if errno != EINTR {
+                        return nil
+                    }
+                }
             }
-            outputPipe.fileHandleForReading.readabilityHandler = nil
-            errorPipe.fileHandleForReading.readabilityHandler = nil
-            return nil
+            if closed.allSatisfy({ $0 }) && !process.isRunning {
+                guard process.terminationStatus == 0 else { return nil }
+                return CommandResult(status: process.terminationStatus, output: String(decoding: data, as: UTF8.self))
+            }
+            // No read-to-EOF calls: a descendant retaining a pipe cannot outlive the deadline.
+            var descriptors = handles.indices.map {
+                pollfd(fd: closed[$0] ? -1 : handles[$0].fileDescriptor, events: Int16(POLLIN), revents: 0)
+            }
+            _ = poll(&descriptors, nfds_t(descriptors.count), 10)
         }
-
-        outputPipe.fileHandleForReading.readabilityHandler = nil
-        errorPipe.fileHandleForReading.readabilityHandler = nil
-        let remainingOutput = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        outputBuffer.append(remainingOutput)
-        let data = outputBuffer.data()
-
-        guard process.terminationStatus == 0 else {
-            return nil
-        }
-
-        return CommandResult(status: process.terminationStatus, output: String(decoding: data, as: UTF8.self))
-    }
-}
-
-private final class LockedDataBuffer: @unchecked Sendable {
-    private let lock = NSLock()
-    private var storage = Data()
-
-    func append(_ data: Data) {
-        guard !data.isEmpty else {
-            return
-        }
-
-        lock.lock()
-        storage.append(data)
-        lock.unlock()
-    }
-
-    func data() -> Data {
-        lock.lock()
-        let data = storage
-        lock.unlock()
-        return data
     }
 }

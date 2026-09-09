@@ -3,8 +3,7 @@ import SwiftUI
 struct PomodoroWidgetView: View {
     let descriptor: DockWidgetDescriptor
 
-    @State private var remainingSeconds = 25 * 60
-    @State private var isRunning = false
+    @State private var countdown = CountdownTimer()
     @State private var isShowingControls = false
 
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -14,15 +13,15 @@ struct PomodoroWidgetView: View {
             isShowingControls.toggle()
         } label: {
             DockCompactLabel(symbolName: descriptor.symbolName, text: timeText, accent: .red)
-                .dockTile(width: DockLayoutCalculator.compactWidth(for: descriptor.id), accent: .red, isActive: isRunning || isShowingControls)
+                .dockTile(width: DockLayoutCalculator.compactWidth(for: descriptor.id), accent: .red, isActive: countdown.isRunning || isShowingControls)
         }
         .buttonStyle(.plain)
         .popover(isPresented: $isShowingControls, arrowEdge: .bottom) {
             HStack(spacing: 10) {
                 Button {
-                    isRunning.toggle()
+                    countdown.toggle(at: .now)
                 } label: {
-                    Image(systemName: isRunning ? "pause.fill" : "play.fill")
+                    Image(systemName: countdown.isRunning ? "pause.fill" : "play.fill")
                 }
                 .buttonStyle(.borderless)
 
@@ -31,8 +30,7 @@ struct PomodoroWidgetView: View {
                     .monospacedDigit()
 
                 Button {
-                    isRunning = false
-                    remainingSeconds = 25 * 60
+                    countdown.reset()
                 } label: {
                     Image(systemName: "arrow.counterclockwise")
                 }
@@ -41,21 +39,13 @@ struct PomodoroWidgetView: View {
             .dockPopoverPanel(width: 170)
         }
         .onReceive(timer) { _ in
-            guard isRunning else {
-                return
-            }
-
-            if remainingSeconds > 0 {
-                remainingSeconds -= 1
-            } else {
-                isRunning = false
-            }
+            countdown.update(at: .now)
         }
     }
 
     private var timeText: String {
-        let minutes = remainingSeconds / 60
-        let seconds = remainingSeconds % 60
+        let minutes = countdown.remainingSeconds / 60
+        let seconds = countdown.remainingSeconds % 60
         return String(format: "%02d:%02d", minutes, seconds)
     }
 }

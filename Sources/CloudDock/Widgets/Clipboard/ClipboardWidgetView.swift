@@ -28,8 +28,18 @@ struct ClipboardWidgetView: View {
 
     private var historyPopover: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Clipboard")
-                .font(.system(size: 13, weight: .semibold))
+            HStack {
+                Text("Clipboard")
+                    .font(.system(size: 13, weight: .semibold))
+                Spacer()
+                Button { clipboardService.clearHistory() } label: {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.borderless)
+                .help("Clear clipboard history")
+                .accessibilityLabel("Clear clipboard history")
+                .disabled(clipboardService.history.isEmpty)
+            }
 
             if privacyMode {
                 Text("Privacy mode")
@@ -45,7 +55,7 @@ struct ClipboardWidgetView: View {
                         clipboardService.copy(item)
                         isShowingHistory = false
                     } label: {
-                        Text(item.text)
+                        Text(item.preview)
                             .font(.system(size: 11))
                             .lineLimit(2)
                             .frame(maxWidth: .infinity, alignment: .leading)

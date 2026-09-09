@@ -7,6 +7,10 @@ swiftc Sources/CloudDock/Widgets/DockWidget.swift \
     Sources/CloudDock/App/DockRefreshPolicy.swift \
     Sources/CloudDock/Services/CommandRunner.swift \
     Sources/CloudDock/Services/BatteryStatusService.swift \
+    Sources/CloudDock/Services/ClipboardService.swift \
+    Sources/CloudDock/Widgets/Pomodoro/CountdownTimer.swift \
+    Tests/CloudDockTests/ClipboardTests.swift \
+    Tests/CloudDockTests/CommandRunnerTests.swift \
     Tests/CloudDockTests/RefreshPolicyTests.swift \
     -o .build/regression-tests
 .build/regression-tests

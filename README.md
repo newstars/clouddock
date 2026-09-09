@@ -67,7 +67,7 @@ Download a `.dmg` from a published **[GitHub Release](https://github.com/newstar
 | 포모도로 / Pomodoro | 기본 타이머 구현됨. / Basic focus timer implemented. |
 | CPU·메모리 / CPU & memory | 사용량·프로세스 목록·확인 후 SIGTERM 요청 구현됨. 종료는 대상에 따라 실패 가능. 메모리 사용량은 메모리 압력과 다름. / Usage, process lists, and confirmed SIGTERM requests implemented; termination may fail. Usage is not memory pressure. |
 | 네트워크·디스크·배터리 / Network, disk & battery | 로컬 통계 구현됨. 정확도·장시간 갱신 검증 진행 중. / Local statistics implemented; accuracy and long-running refresh checks ongoing. |
-| 클립보드 / Clipboard | 160자 미리보기 10개를 메모리에 보관. 원문 전체 복원 아님; 민감정보 탐지는 불완전. / Ten in-memory text previews capped at 160 characters, not full-text restoration; sensitive-text detection is heuristic. |
+| 클립보드 / Clipboard | 최대 64 KiB 텍스트 10개를 메모리에 보관하고 원문 복원. 160자 미리보기·기록 삭제 지원. 민감 표시 클립과 탐지된 비밀정보는 제외하지만 탐지는 불완전. / Ten in-memory text entries up to 64 KiB each, with full-text restoration, 160-character previews, and clear history. Concealed clips and detected secrets are excluded; detection is heuristic. |
 | 메모 / Notes | 로컬 간단 메모. Apple Notes 동기화 아님. / Local quick note, not Apple Notes sync. |
 | 캘린더 / Calendar | EventKit 일정 조회 구현됨. macOS 권한 필요. / EventKit viewing implemented; permission required. |
 | 음량·출력 / Audio | CoreAudio 제어 구현됨. 일부 외부 장치는 소프트웨어 음량 미지원. / CoreAudio controls implemented; some devices do not support software volume. |
