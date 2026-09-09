@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 struct NetworkStatsSnapshot: Equatable {
     var downloadBytesPerSecond: UInt64
@@ -7,14 +8,38 @@ struct NetworkStatsSnapshot: Equatable {
     static let empty = NetworkStatsSnapshot(downloadBytesPerSecond: 0, uploadBytesPerSecond: 0)
 }
 
+@MainActor
 final class NetworkStatsService: ObservableObject {
     @Published private(set) var snapshot = NetworkStatsSnapshot.empty
+    private(set) var isRefreshing = false
+    private let loadOutput: @Sendable () async -> String?
+
+    init(loadOutput: @escaping @Sendable () async -> String? = {
+        await Task.detached(priority: .utility) {
+            CommandRunner.run("/usr/sbin/netstat", arguments: ["-ibn"], timeout: 1.5)?.output
+        }.value
+    }) {
+        self.loadOutput = loadOutput
+    }
 
     private var previousTotal: (received: UInt64, sent: UInt64, date: Date)?
 
     func refresh() {
-        guard let total = readInterfaceTotals() else {
+        guard !isRefreshing else { return }
+        isRefreshing = true
+        let load = loadOutput
+        Task { [weak self] in
+            let output = await load()
+            guard let self else { return }
+            self.apply(output)
+            self.isRefreshing = false
+        }
+    }
+
+    private func apply(_ output: String?) {
+        guard let output, let total = parseTotals(output) else {
             snapshot = .empty
+            previousTotal = nil
             return
         }
 
@@ -35,14 +60,6 @@ final class NetworkStatsService: ObservableObject {
             downloadBytesPerSecond: UInt64(Double(receivedDelta) / interval),
             uploadBytesPerSecond: UInt64(Double(sentDelta) / interval)
         )
-    }
-
-    private func readInterfaceTotals() -> (received: UInt64, sent: UInt64)? {
-        guard let result = CommandRunner.run("/usr/sbin/netstat", arguments: ["-ibn"], timeout: 1.5) else {
-            return nil
-        }
-
-        return parseTotals(result.output)
     }
 
     private func parseTotals(_ output: String) -> (received: UInt64, sent: UInt64)? {

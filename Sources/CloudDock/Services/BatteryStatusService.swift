@@ -22,16 +22,30 @@ struct BatteryStatusSnapshot: Equatable {
     }
 }
 
+@MainActor
 final class BatteryStatusService: ObservableObject {
     @Published private(set) var snapshot = BatteryStatusSnapshot.unknown
+    private(set) var isRefreshing = false
+    private let loadOutput: @Sendable () async -> String?
+
+    init(loadOutput: @escaping @Sendable () async -> String? = {
+        await Task.detached(priority: .utility) {
+            CommandRunner.run("/usr/bin/pmset", arguments: ["-g", "batt"], timeout: 1.5)?.output
+        }.value
+    }) {
+        self.loadOutput = loadOutput
+    }
 
     func refresh() {
-        guard let result = CommandRunner.run("/usr/bin/pmset", arguments: ["-g", "batt"], timeout: 1.5) else {
-            snapshot = .unknown
-            return
+        guard !isRefreshing else { return }
+        isRefreshing = true
+        let load = loadOutput
+        Task { [weak self] in
+            let output = await load()
+            guard let self else { return }
+            self.snapshot = output.map(self.parse) ?? .unknown
+            self.isRefreshing = false
         }
-
-        snapshot = parse(result.output)
     }
 
     func parse(_ output: String) -> BatteryStatusSnapshot {

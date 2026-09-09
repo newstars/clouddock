@@ -2,7 +2,8 @@ import Foundation
 
 @main
 struct RefreshPolicyTests {
-    static func main() {
+    @MainActor
+    static func main() async {
         let hidden = DockRefreshPolicy(enabled: Set(DockWidgetID.allCases), isVisible: false, privacyMode: false)
         for widget in DockWidgetID.allCases {
             precondition(!hidden.refreshes(widget, tick: 0), "Hidden dock polled \(widget)")
@@ -44,5 +45,6 @@ struct RefreshPolicyTests {
         countdown.reset()
         precondition(countdown.remainingSeconds == 60)
         print("PASS: countdown pause/resume, delayed ticks, elapsed deadline, reset")
+        await BackgroundRefreshTests.run()
     }
 }
