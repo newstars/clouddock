@@ -51,12 +51,16 @@ struct GitStatusSnapshot: Equatable {
     }
 }
 
+@MainActor
 final class GitStatusService: ObservableObject {
     @Published private(set) var snapshot = GitStatusSnapshot.empty
+    private var isRefreshing = false
 
     var repositoryPaths: [String] = []
 
     func refresh() {
+        guard !isRefreshing else { return }
+        let requestedPaths = repositoryPaths
         let paths = repositoryPaths
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
@@ -66,20 +70,26 @@ final class GitStatusService: ObservableObject {
             return
         }
 
-        let repositories = paths.map(readRepositoryStatus)
-        snapshot = GitStatusSnapshot(repositories: repositories, message: repositories.isEmpty ? "Choose repos" : "Ready")
-    }
-
-    private func readRepositoryStatus(path: String) -> GitRepositorySnapshot {
-        guard let result = CommandRunner.run(
-            "/usr/bin/git",
-            arguments: ["-C", path, "status", "--porcelain=v1", "-b"],
-            timeout: 1.5
-        ) else {
-            return unavailableRepository(path: path)
+        isRefreshing = true
+        Task { [weak self] in
+            let results = await Task.detached(priority: .utility) {
+                paths.map { path in
+                    (path, CommandRunner.run("/usr/bin/git",
+                        arguments: ["--no-optional-locks", "-C", path, "status", "--porcelain=v1", "-b"],
+                        timeout: 1.5)?.output)
+                }
+            }.value
+            guard let self else { return }
+            self.isRefreshing = false
+            guard self.repositoryPaths == requestedPaths else {
+                self.refresh()
+                return
+            }
+            let repositories = results.map { path, output in
+                output.map { self.parseStatus($0, path: path) } ?? self.unavailableRepository(path: path)
+            }
+            self.snapshot = GitStatusSnapshot(repositories: repositories, message: "Ready")
         }
-
-        return parseStatus(result.output, path: path)
     }
 
     private func unavailableRepository(path: String) -> GitRepositorySnapshot {

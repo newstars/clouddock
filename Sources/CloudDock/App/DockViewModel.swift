@@ -41,14 +41,7 @@ final class DockViewModel: ObservableObject {
         groupChanges = appGroupsService.objectWillChange.sink { [weak self] in
             self?.objectWillChange.send()
         }
-        systemMetricsService.refresh()
         gitStatusService.repositoryPaths = loaded.gitRepositoryPaths
-        diskStatsService.refresh()
-        clipboardService.refresh()
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(300))
-            refreshCommandBackedServices()
-        }
         startRefreshLoop()
     }
 
@@ -60,6 +53,7 @@ final class DockViewModel: ObservableObject {
         withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
             isDockOpen = true
         }
+        refreshCommandBackedServices()
     }
 
     func hideDock() {
@@ -181,32 +175,32 @@ final class DockViewModel: ObservableObject {
     }
 
     func refreshCommandBackedServices() {
-        systemMetricsService.refresh()
-        gitStatusService.refresh()
-        networkStatsService.refresh()
-        processMonitorService.refresh()
-        batteryStatusService.refresh()
+        refreshServices(tick: 0)
+    }
+
+    private func refreshServices(tick: Int) {
+        let policy = DockRefreshPolicy(enabled: preferences.enabledWidgets,
+                                       isVisible: isDockOpen, privacyMode: preferences.privacyMode)
+        if policy.capturesClipboard { clipboardService.refresh() }
+        if policy.refreshes(.cpu, tick: tick) || policy.refreshes(.memory, tick: tick) {
+            systemMetricsService.refresh()
+            if !preferences.privacyMode { processMonitorService.refresh() }
+        }
+        if policy.refreshes(.network, tick: tick) { networkStatsService.refresh() }
+        if policy.refreshes(.battery, tick: tick) { batteryStatusService.refresh() }
+        if policy.refreshes(.gitStatus, tick: tick) { gitStatusService.refresh() }
+        if policy.refreshes(.disk, tick: tick) { diskStatsService.refresh() }
     }
 
     private func startRefreshLoop() {
-        refreshTask = Task { @MainActor in
+        refreshTask = Task { @MainActor [weak self] in
             var tick = 0
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(2))
-                systemMetricsService.refresh()
-                processMonitorService.refresh()
-                if !preferences.privacyMode {
-                    clipboardService.refresh()
-                }
-
-                tick += 1
-                if tick % 3 == 0 {
-                    networkStatsService.refresh()
-                    batteryStatusService.refresh()
-                }
-                if tick % 8 == 0 {
-                    gitStatusService.refresh()
-                }
+                do { try await Task.sleep(for: .seconds(2)) }
+                catch { return }
+                guard let self else { return }
+                tick = (tick + 1) % 120
+                self.refreshServices(tick: tick)
             }
         }
     }

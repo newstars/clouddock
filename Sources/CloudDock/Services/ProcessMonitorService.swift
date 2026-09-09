@@ -33,16 +33,22 @@ enum ProcessSortMetric {
     case memory
 }
 
+@MainActor
 final class ProcessMonitorService: ObservableObject {
     @Published private(set) var processes: [MonitoredProcess] = []
+    private var isRefreshing = false
 
     func refresh() {
-        guard let result = CommandRunner.run("/bin/ps", arguments: ["-axo", "pid=,uid=,pcpu=,rss=,comm="], timeout: 1.5) else {
-            processes = []
-            return
+        guard !isRefreshing else { return }
+        isRefreshing = true
+        Task { [weak self] in
+            let output = await Task.detached(priority: .utility) {
+                CommandRunner.run("/bin/ps", arguments: ["-axo", "pid=,uid=,pcpu=,rss=,comm="], timeout: 1.5)?.output
+            }.value
+            guard let self else { return }
+            self.isRefreshing = false
+            self.processes = self.parseProcesses(output ?? "")
         }
-
-        processes = parseProcesses(result.output)
     }
 
     func topProcesses(for metric: ProcessSortMetric, limit: Int = 3) -> [MonitoredProcess] {

@@ -26,6 +26,7 @@ jobs:
           BUILD_NUMBER: ${{ github.run_number }}
           UNIVERSAL: '1'
         run: |
+          bash Scripts/test.sh
           bash Scripts/package_dmg.sh
           lipo .build/dist/CloudDock.app/Contents/MacOS/CloudDock -verify_arch arm64 x86_64
       - uses: actions/upload-artifact@v4

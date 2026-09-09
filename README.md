@@ -85,9 +85,9 @@ GitHub PRs/notifications, Kubernetes, AWS, and revenue widgets are planned, not 
 
 ### 성능·개인정보 / Performance & Privacy
 
-현재 공유 갱신 루프는 독이 숨겨져도 일부 통계·명령을 조회합니다. 장시간 CPU·메모리 및 누수 검증은 아직 완료되지 않았습니다. UI 설정·로컬 경로·메모는 로컬 저장, Datadog 키는 Keychain 저장입니다. 개인정보 모드는 모든 위젯 정보를 숨기는 보안 경계가 아닙니다.
+독이 숨겨지면 공유 루프의 시스템 통계·Git·프로세스 조회를 중단하고, 표시 중에도 켜진 위젯만 갱신합니다. 이미 시작한 조회는 완료될 수 있습니다. 클립보드 또는 Tools가 활성화되고 개인정보 모드가 꺼져 있으면 숨긴 동안에도 클립보드 기록은 유지합니다. 프로세스·Git 조회는 백그라운드에서 실행합니다. 장시간 CPU·메모리 및 누수 검증은 아직 완료되지 않았습니다. UI 설정·로컬 경로·메모는 로컬 저장, Datadog 키는 Keychain 저장입니다. 개인정보 모드는 모든 위젯 정보를 숨기는 보안 경계가 아닙니다.
 
-The shared refresh loop currently polls some statistics/commands even when hidden. Long-running CPU/memory and leak validation is incomplete. Preferences, paths, and notes are local; Datadog keys use Keychain. Privacy mode does not hide all data in every widget.
+The shared loop stops starting system-statistics, Git, and process queries while hidden, and refreshes only enabled widgets while visible. In-flight queries may finish. Clipboard history continues while hidden only when Clipboard or Tools is enabled and privacy mode is off. Process and Git queries run in the background. Long-running CPU/memory and leak validation is incomplete. Preferences, paths, and notes are local; Datadog keys use Keychain. Privacy mode does not hide all data in every widget.
 
 ## 보안 / Security Boundary
 

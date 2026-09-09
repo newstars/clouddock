@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 struct BatteryStatusSnapshot: Equatable {
     var percentage: Int?
@@ -33,10 +34,11 @@ final class BatteryStatusService: ObservableObject {
         snapshot = parse(result.output)
     }
 
-    private func parse(_ output: String) -> BatteryStatusSnapshot {
+    func parse(_ output: String) -> BatteryStatusSnapshot {
         let isPluggedIn = output.localizedCaseInsensitiveContains("AC Power")
         let isCharging = output.localizedCaseInsensitiveContains("charging")
             && !output.localizedCaseInsensitiveContains("not charging")
+            && !output.localizedCaseInsensitiveContains("discharging")
 
         let percentage = output
             .split(whereSeparator: \.isWhitespace)

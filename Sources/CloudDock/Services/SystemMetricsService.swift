@@ -48,10 +48,11 @@ final class SystemMetricsService: ObservableObject {
             return 0
         }
 
-        let user = Double(cpuInfo.cpu_ticks.0 - previousCPUInfo.cpu_ticks.0)
-        let system = Double(cpuInfo.cpu_ticks.1 - previousCPUInfo.cpu_ticks.1)
-        let idle = Double(cpuInfo.cpu_ticks.2 - previousCPUInfo.cpu_ticks.2)
-        let nice = Double(cpuInfo.cpu_ticks.3 - previousCPUInfo.cpu_ticks.3)
+        // Kernel counters wrap on long-running systems.
+        let user = Double(cpuInfo.cpu_ticks.0 &- previousCPUInfo.cpu_ticks.0)
+        let system = Double(cpuInfo.cpu_ticks.1 &- previousCPUInfo.cpu_ticks.1)
+        let idle = Double(cpuInfo.cpu_ticks.2 &- previousCPUInfo.cpu_ticks.2)
+        let nice = Double(cpuInfo.cpu_ticks.3 &- previousCPUInfo.cpu_ticks.3)
         let total = user + system + idle + nice
 
         guard total > 0 else {
